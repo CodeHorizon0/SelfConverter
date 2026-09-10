@@ -1,2 +1,2 @@
 # SelfConverter
-Audio &amp; Video serverless converter, using WASM FFMPEG.
+Audio &amp; Video serverless converter, using client WASM FFMPEG.
