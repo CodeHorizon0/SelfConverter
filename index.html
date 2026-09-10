@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Converter</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="page">
+    <main>
+        <section class="panel">
+            <h2 class="title">Input</h2>
+            <input class="file-input" type="file" id="mediaFile" accept="audio/*,video/*">
+
+            <label for="mediaFile" id="fileLabel" class="dropzone">
+                <strong>Select or drop a media file</strong>
+                <span>Audio and video files supported by FFmpeg</span>
+            </label>
+
+            <div id="selectedFile" class="selected">
+                <div class="file-name" id="fileName"></div>
+                <div class="file-meta">
+                    <span id="fileSize"></span>
+                    <span id="fileType"></span>
+                </div>
+            </div>
+
+            <div id="fileStatus" class="status"></div>
+        </section>
+
+        <section class="panel">
+            <h2 class="title">Output</h2>
+
+            <div class="field">
+                <label for="outputFormat">Format</label>
+                <select id="outputFormat"></select>
+            </div>
+
+            <div class="field" id="bitrateGroup">
+                <label for="bitrate">Bitrate</label>
+                <select id="bitrate">
+                    <option value="">Default</option>
+                </select>
+            </div>
+        </section>
+
+        <section class="panel">
+            <button id="convertBtn" class="button" type="button" disabled>Convert</button>
+
+            <div id="progressSection" class="progress">
+                <div class="progress-row">
+                    <span id="progressLabel">Preparing</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+                <div class="progress-bg">
+                    <div id="progressBar" class="progress-bar"></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2 class="title">Console</h2>
+            <div id="console" class="console"></div>
+        </section>
+    </main>
+
+    <footer class="footer">Powered by FFmpeg.wasm</footer>
+</div>
+
+<script src="index.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
