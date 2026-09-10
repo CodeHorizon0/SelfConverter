@@ -14,6 +14,7 @@ const dom = {
     fileSize: document.getElementById("fileSize"),
     fileType: document.getElementById("fileType"),
     fileStatus: document.getElementById("fileStatus"),
+    conversionMode: document.getElementById("conversionMode"),
     outputFormat: document.getElementById("outputFormat"),
     bitrateGroup: document.getElementById("bitrateGroup"),
     bitrate: document.getElementById("bitrate"),
@@ -24,6 +25,8 @@ const dom = {
     progressBar: document.getElementById("progressBar"),
     console: document.getElementById("console")
 };
+
+const MAX_INPUT_SIZE = 1024 ** 3;
 
 const AUDIO_FORMATS = {
     mp3: {
@@ -126,17 +129,57 @@ function setProgress(percent, label) {
     dom.progressLabel.textContent = label;
 }
 
+function getConversionMode() {
+    return dom.conversionMode.value;
+}
+
 function getAvailableFormats() {
-    if (state.fileInfo && state.fileInfo.type === "video") {
-        return {
-            audio: AUDIO_FORMATS,
-            video: VIDEO_FORMATS
-        };
+    if (!state.fileInfo) {
+        return {};
     }
 
-    return {
-        audio: AUDIO_FORMATS
-    };
+    if (getConversionMode() === "video-to-video") {
+        return { video: VIDEO_FORMATS };
+    }
+
+    return { audio: AUDIO_FORMATS };
+}
+
+function getAvailableModes() {
+    if (!state.fileInfo) {
+        return [];
+    }
+
+    if (state.fileInfo.type === "video") {
+        return [
+            ["video-to-video", "Video to video"],
+            ["video-to-audio", "Video to audio"]
+        ];
+    }
+
+    return [["audio-to-audio", "Audio to audio"]];
+}
+
+function updateConversionModes() {
+    const currentMode = getConversionMode();
+    const modes = getAvailableModes();
+
+    dom.conversionMode.replaceChildren();
+
+    for (const mode of modes) {
+        const option = document.createElement("option");
+        option.value = mode[0];
+        option.textContent = mode[1];
+        dom.conversionMode.appendChild(option);
+    }
+
+    if (modes.some(function(mode) {
+        return mode[0] === currentMode;
+    })) {
+        dom.conversionMode.value = currentMode;
+    } else if (modes.length) {
+        dom.conversionMode.value = modes[0][0];
+    }
 }
 
 function getSelectedFormat() {
@@ -171,7 +214,7 @@ function updateOutputFormats() {
 
     if (availableValues.includes(currentFormat)) {
         dom.outputFormat.value = currentFormat;
-    } else if (state.fileInfo && state.fileInfo.type === "video") {
+    } else if (getConversionMode() === "video-to-video") {
         dom.outputFormat.value = "mp4";
     } else {
         dom.outputFormat.value = "mp3";
@@ -230,6 +273,10 @@ async function handleFile(file) {
     dom.convertBtn.disabled = true;
 
     try {
+        if (file.size > MAX_INPUT_SIZE) {
+            throw new Error(`File is too large. Maximum input size is ${formatBytes(MAX_INPUT_SIZE)}.`);
+        }
+
         const info = await getFileType(file);
 
         if (info.type === "unknown") {
@@ -245,6 +292,7 @@ async function handleFile(file) {
         dom.selectedFile.classList.add("show");
         dom.fileStatus.textContent = `Verified as ${info.type} (${info.format}) from file data.`;
 
+        updateConversionModes();
         updateOutputFormats();
         updateConvertButton();
         addLog(`Selected ${file.name} -> ${info.type}/${info.format}`);
@@ -357,11 +405,9 @@ function getVideoCodecArguments(format, bitrate) {
 }
 
 function buildConversionArguments(format, bitrate, inputPath, outputPath) {
-    if (VIDEO_FORMATS[format]) {
-        if (!state.fileInfo || state.fileInfo.type !== "video") {
-            throw new Error("Video output requires a video input.");
-        }
+    const mode = getConversionMode();
 
+    if (mode === "video-to-video") {
         return [
             "-y",
             "-i", inputPath,
@@ -370,13 +416,27 @@ function buildConversionArguments(format, bitrate, inputPath, outputPath) {
         ];
     }
 
-    return [
-        "-y",
-        "-i", inputPath,
-        "-vn",
-        ...getAudioCodecArguments(format, bitrate),
-        outputPath
-    ];
+    if (mode === "video-to-audio") {
+        return [
+            "-y",
+            "-i", inputPath,
+            "-vn",
+            ...getAudioCodecArguments(format, bitrate),
+            outputPath
+        ];
+    }
+
+    if (mode === "audio-to-audio") {
+        return [
+            "-y",
+            "-i", inputPath,
+            "-vn",
+            ...getAudioCodecArguments(format, bitrate),
+            outputPath
+        ];
+    }
+
+    throw new Error(`Unsupported conversion mode: ${mode}`);
 }
 
 function getInputDurationSeconds() {
@@ -423,6 +483,10 @@ async function convertMedia() {
 
     try {
         addLog(`Converting ${state.selectedFile.name} -> ${format.toUpperCase()}`);
+
+        if (state.selectedFile.size > MAX_INPUT_SIZE) {
+            throw new Error(`File is too large. Maximum input size is ${formatBytes(MAX_INPUT_SIZE)}.`);
+        }
 
         setProgress(2, "Reading input...");
         const inputData = new Uint8Array(await state.selectedFile.arrayBuffer());
@@ -515,9 +579,11 @@ dom.fileInput.addEventListener("change", function(event) {
     handleFile(event.target.files[0]);
 });
 
+dom.conversionMode.addEventListener("change", updateOutputFormats);
 dom.outputFormat.addEventListener("change", updateBitrateOptions);
 dom.convertBtn.addEventListener("click", convertMedia);
 
+updateConversionModes();
 updateOutputFormats();
 bindDragEvents();
 initFFmpeg();

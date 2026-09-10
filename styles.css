@@ -155,9 +155,14 @@ main {
 
 .status {
     margin-top: 8px;
-
     color: var(--text-muted);
     font-size: 12px;
+}
+
+.limit {
+    margin-top: 4px;
+    color: var(--text-muted);
+    font-size: 11px;
 }
 
 .field {
